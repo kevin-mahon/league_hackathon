@@ -18,6 +18,9 @@ class BaseDTO:
         for f in fields(cls):
             value = data.get(f.name)
 
+            if f.name in BLACLIST:
+                continue
+
             ftype = f.type
             origin = get_origin(ftype)
 
