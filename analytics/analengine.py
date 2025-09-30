@@ -2,6 +2,7 @@ import requests
 import time
 import klogs
 import pandas as pd
+from . import dtos
 from datetime import datetime, timedelta
 
 log = klogs.get_logger("ANALYTICS")
@@ -72,14 +73,20 @@ class Analytics:
         log.debug(f"First 5 matches: {all_matches[:5]}")
         return all_matches
 
-    def get_match_details(self, match_id: str, platform: str) -> dict:
+    def get_match_details(self, match_id: str, platform: str) -> str:
         """Get detailed match information for a given match ID."""
         region = REGION_MAP[platform]
         url = f"https://{region}.api.riotgames.com/lol/match/v5/matches/{match_id}"
         headers = {"X-Riot-Token": self.api_key}
         response = requests.get(url, headers=headers)
         response.raise_for_status()
-        return response.json()
+        print(response)
+        return response.text
+
+    def interpret_match(self, match_data: str) -> dtos.MatchDTO:
+        """Interpret raw match data into structured DTOs."""
+        match_dto = dtos.MatchDTO.from_json(match_data)
+        return match_dto
 
     def get_champion_mastery(self, summoner_name: str, tag : str, platform: str) -> list[dict]:
         """Get champion mastery data for a given summoner."""
@@ -102,6 +109,16 @@ class Analytics:
         response = requests.get(url, headers=headers)
         response.raise_for_status()
         return response.json()
+
+def run_analysis(summoner: str, tag: str, platform: str, riot_api_key: str):
+    analytics = Analytics(riot_api_key)
+
+    detailed_match_list = []
+    matches = analytics.get_matches_last_year(summoner, tag, platform)
+    for match in matches:
+        detailed_match = analytics.get_match_details(match, platform)
+        matchDTO = analytics.interpret_match(detailed_match)
+        print(matchDTO)
 
 #interesting data fields:
 #dodgeSkillShotsSmallWindow
