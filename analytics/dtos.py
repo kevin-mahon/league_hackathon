@@ -31,6 +31,8 @@ class BaseDTO:
             # Case 2: list of dataclasses
             elif origin in (list, tuple):
                 (elem_type,) = get_args(ftype) or (None,)
+                if elem_type in BLACLIST:
+                    continue
                 if elem_type and is_dataclass(elem_type) and isinstance(value, list):
                     init_data[f.name] = [elem_type.from_dict(v) if isinstance(v, dict) else v
                                          for v in value]
@@ -101,7 +103,6 @@ class ParticipantDTO(BaseDTO):
     objectivesStolenAssists: int
     participantId: int
     pentaKills: int
-    perks : dict
     physicalDamageDealt : int
     physicalDamageDealtToChampions : int
     physicalDamageTaken : int

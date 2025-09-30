@@ -41,7 +41,7 @@ class Analytics:
         response.raise_for_status()
         return response.json()["puuid"]
 
-    def get_matches_last_year(self, summoner_name: str, tag : str, platform: str, count: int = 100) -> list[str]:
+    def get_matches_last_year(self, summoner_name: str, tag : str, platform: str, count: int = 100, stop_condition  = None) -> list[str]:
         """Get all match IDs from the past year for a summoner."""
         region = REGION_MAP[platform]
         puuid = self.get_summoner_puuid(summoner_name, tag, region)
@@ -69,6 +69,10 @@ class Analytics:
             all_matches.extend(matches)
             start += count
 
+            if stop_condition and len(all_matches) >= stop_condition:
+                log.warning(f"Stop condition of {stop_condition} matches reached.")
+                break
+
         log.debug(f"Total matches fetched: {len(all_matches)}")
         log.debug(f"First 5 matches: {all_matches[:5]}")
         return all_matches
@@ -80,7 +84,6 @@ class Analytics:
         headers = {"X-Riot-Token": self.api_key}
         response = requests.get(url, headers=headers)
         response.raise_for_status()
-        print(response)
         return response.text
 
     def interpret_match(self, match_data: str) -> dtos.MatchDTO:
@@ -114,124 +117,16 @@ def run_analysis(summoner: str, tag: str, platform: str, riot_api_key: str):
     analytics = Analytics(riot_api_key)
 
     detailed_match_list = []
-    matches = analytics.get_matches_last_year(summoner, tag, platform)
-    for match in matches:
+    matches = analytics.get_matches_last_year(summoner, tag, platform, stop_condition=10)
+    for match in matches[0:2]:
         detailed_match = analytics.get_match_details(match, platform)
-        matchDTO = analytics.interpret_match(detailed_match)
-        print(matchDTO)
+        detailed_match_list.append(analytics.interpret_match(detailed_match))
 
-#interesting data fields:
-#dodgeSkillShotsSmallWindow
-#doubleAces
-#damageTakenOnTeamPercentage
-#dancedWithRiftHerald
-#controlWardsPlaces
-#damagePerMinute
-#earliestDragonTakedown
-#earlyLaningPhaseGoldExpAdvantage
-#laningPhaseGoldExpAdvantage
-#legendaryItemsUsed
-#maxCsAdvantageOnLaneOpponent
-#maxLevelLeadLaneOpponent
-#outnumberedKills
-#perfectGame
-#poroExplosions
-#riftHeraldTakedowns
-#scuttleCrabKills
-#saveAllyFromDeath
-#skillshotsDodged
-#skillshotsHit
-#soloKills
-#stealthWardsPlaced
-#survivedSingleDigitHpCount
-#survivedThreeImmobilizesInFight
-#teamDamagePercentage
-#visionScoreAdvantageLaneOpponent
-#visionScore
-#visionScorePerMinute
-#championId
-#enemyChampionImmobilizations
-#epicMonsterKillsNearEnemyJungler
-#epicMonsteriKillsWithin30SecondsOfSpawn
-#epicMonsterSteals
-#epicMonsterStolenWithoutSmite
-#firstTurretKilled
-#gameLength
-#goldPerMinute
-#immobilizeAndKillWithAlly
-#kda
-#killParticipation
-#killingSprees
-#killsNearEnemyTurret
-#laneMinionsFirst10Minutes
-#commandPings
-#dangerPings
-#enemyMissingPings
-#enemyVisionPings
-#getBackPings
-#holdPings
-#onMyWayPings
-#pushPings
-#retreatPings
-#visionClearedPings
-#spellNCasts
-#summoner1Casts
-#summoner1Id
-#summoner2Casts 
-#summoner2Id
-#summonerLevel
-#individiualPosition
-#firstBloodKill
-#firstTowerKill
-#gameEndedInEarlySurrender
-#gameEndedInSurrender
-#deaths
-#kills
-#magicDamageDealtToChampions
-#physicalDamageDealtToChampions
-#totalDamageDealtToChampions
-#totalDamageShieldedOnTeammates
-#totalHeal
-#totalHealsOnTeammates
-#totalMinionsKilled
-#totalDamageTaken
-#physicalDamageTaken
-#timeCCingOthers
-#magicDamageTaken
-#assists
-#largestCriticalStrike
-#largestMultiKill
-#win
+    #save detailed_match_list object to a pkl file
+    import pickle
+    with open("detailed_matches.pkl", "wb") as f:
+        pickle.dump(detailed_match_list, f)
 
-#dragonKills
-#damageDealtToObjectives
-#damageSelfMitigated
-#goldEarned
-#goldSpent
-
-
-if __name__ == "__main__":
-    # Example usage
-    RIOT_API_KEY = "RGAPI-3074b506-5569-4d50-940c-099233ac3560"  # Replace with your Riot API key
-    analytics = Analytics(RIOT_API_KEY)
-
-    summoner = "Doublelift"  # Replace with summoner name
-    tag = "NA01"               # Replace with summoner tag
-    platform = "na1"         # Replace with summoner's platform routing value (e.g., na1, euw1, kr)
-
-    detailed_match_list = []
-    matches = analytics.get_matches_last_year(summoner, tag, platform)
-    for match in matches[:5]:
-        detailed_match_list.append(analytics.get_match_details(match, platform)["info"])
-
-    df = pd.json_normalize(detailed_match_list, sep="_")
-    #index of df should be 'gameCreation' 
-    df['gameCreation'] = pd.to_datetime(df['gameCreation'], unit='ms')
-    df.set_index('gameCreation', inplace=True)
+    df = pd.DataFrame([match.to_dict() for match in detailed_match_list])
     df.to_csv("detailed_matches.csv", index=False)
-
-
-    #save matches to csv
-
-
 
