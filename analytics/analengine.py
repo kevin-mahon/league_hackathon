@@ -31,15 +31,33 @@ class Analytics:
 
     def __init__(self, riot_api_key: str):
         self.api_key = riot_api_key
+        self.messages_in_last_minute = 0
+        self.messages_in_last_second = 0
+        self.last_minute_check = time.time()
+        self.last_second_check = time.time()
 
-    def get_summoner_puuid(self, summoner_name: str, tag : str, region: str) -> str:
-        """Get the PUUID for a given summoner name."""
-        log.debug(f"Fetching PUUID for summoner: {summoner_name}#{tag} in region: {region}")
-        url = f"https://{region}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{summoner_name}/{tag}"#summoner/v4/summoners/by-name/{summoner_name}"
-        headers = {"X-Riot-Token": self.api_key}
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
-        return response.json()["puuid"]
+    def check_api_usage(self):
+        """We are allowed 100 requests every 2 minutes and 20 requests every 1 second.
+        This function checks the current rate limit status. And waits if we are close to the limit.
+        """
+        if time.time() - self.last_minute_check > 120:
+            self.messages_in_last_minute = 0
+            self.last_minute_check = time.time()
+        if time.time() - self.last_second_check > 1:
+            self.messages_in_last_second = 0
+            self.last_second_check = time.time()
+        if self.messages_in_last_minute >= 90:
+            log.warning("Approaching 100 requests per 2 minutes limit. Sleeping for 10 seconds.")
+            time.sleep(10)
+            self.messages_in_last_minute = 0
+            self.last_minute_check = time.time()
+        if self.messages_in_last_second >= 18:
+            log.warning("Approaching 20 requests per second limit. Sleeping for 1 second.")
+            time.sleep(1)
+            self.messages_in_last_second = 0
+            self.last_second_check = time.time()
+        self.messages_in_last_minute += 1
+        self.messages_in_last_second += 1
 
     def get_matches_last_year(self, summoner_name: str, tag : str, platform: str, count: int = 100, stop_condition  = None) -> list[str]:
         """Get all match IDs from the past year for a summoner."""
@@ -59,6 +77,7 @@ class Analytics:
                 f"{puuid}/ids?start={start}&count={count}&startTime={start_time}&endTime={end_time}"
             )
             headers = {"X-Riot-Token": self.api_key}
+            self.check_api_usage()
             response = requests.get(url, headers=headers)
             response.raise_for_status()
             matches = response.json()
@@ -82,6 +101,7 @@ class Analytics:
         region = REGION_MAP[platform]
         url = f"https://{region}.api.riotgames.com/lol/match/v5/matches/{match_id}"
         headers = {"X-Riot-Token": self.api_key}
+        self.check_api_usage()
         response = requests.get(url, headers=headers)
         response.raise_for_status()
         return response.text
@@ -98,6 +118,7 @@ class Analytics:
         log.debug(f"Fetching champion mastery for PUUID: {puuid}")
         url = f"https://{region}.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-summoner/{puuid}"
         headers = {"X-Riot-Token": self.api_key}
+        self.check_api_usage()
         response = requests.get(url, headers=headers)
         response.raise_for_status()
         return response.json()
@@ -109,6 +130,7 @@ class Analytics:
         log.debug(f"Fetching league entries for PUUID: {puuid}")
         url = f"https://{region}.api.riotgames.com/lol/league/v4/entries/by-summoner/{puuid}"
         headers = {"X-Riot-Token": self.api_key}
+        self.check_api_usage()
         response = requests.get(url, headers=headers)
         response.raise_for_status()
         return response.json()
@@ -123,9 +145,9 @@ def run_analysis(summoner: str, tag: str, platform: str, riot_api_key: str):
         detailed_match_list.append(analytics.interpret_match(detailed_match))
 
     #save detailed_match_list object to a pkl file
-    import pickle
-    with open("detailed_matches.pkl", "wb") as f:
-        pickle.dump(detailed_match_list, f)
+    # import pickle
+    # with open("detailed_matches.pkl", "wb") as f:
+    #     pickle.dump(detailed_match_list, f)
 
     df = pd.DataFrame([match.to_dict() for match in detailed_match_list])
     df.to_csv("detailed_matches.csv", index=False)
