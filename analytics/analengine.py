@@ -36,6 +36,15 @@ class Analytics:
         self.last_minute_check = time.time()
         self.last_second_check = time.time()
 
+    def get_summoner_puuid(self, summoner_name: str, tag : str, region: str) -> str:
+        """Get the PUUID for a given summoner name."""
+        log.debug(f"Fetching PUUID for summoner: {summoner_name}#{tag} in region: {region}")
+        url = f"https://{region}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{summoner_name}/{tag}"#summoner/v4/summoners/by-name/{summoner_name}"
+        headers = {"X-Riot-Token": self.api_key}
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        return response.json()["puuid"]
+
     def check_api_usage(self):
         """We are allowed 100 requests every 2 minutes and 20 requests every 1 second.
         This function checks the current rate limit status. And waits if we are close to the limit.
