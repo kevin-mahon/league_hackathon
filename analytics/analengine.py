@@ -1,8 +1,10 @@
+from typing import Any, Dict
 import requests
 import time
 import klogs
 import pandas as pd
 from . import dtos
+from . import champions
 from datetime import datetime, timedelta
 
 log = klogs.get_logger("ANALYTICS")
@@ -38,8 +40,9 @@ class Analytics:
 
     def get_summoner_puuid(self, summoner_name: str, tag : str, region: str) -> str:
         """Get the PUUID for a given summoner name."""
-        log.debug(f"Fetching PUUID for summoner: {summoner_name}#{tag} in region: {region}")
-        url = f"https://{region}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{summoner_name}/{tag}"#summoner/v4/summoners/by-name/{summoner_name}"
+        platform = REGION_MAP[region]
+        log.debug(f"Fetching PUUID for summoner: {summoner_name}#{tag} in region: {platform}")
+        url = f"https://{platform}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{summoner_name}/{tag}"#summoner/v4/summoners/by-name/{summoner_name}"
         headers = {"X-Riot-Token": self.api_key}
         self.check_api_usage()
         response = requests.get(url, headers=headers)
@@ -57,22 +60,22 @@ class Analytics:
             self.messages_in_last_second = 0
             self.last_second_check = time.time()
         if self.messages_in_last_minute >= 90:
-            log.warning("Approaching 100 requests per 2 minutes limit. Sleeping for 10 seconds.")
-            time.sleep(60)
+            log.warning("Approaching 100 requests per 2 minutes limit. Sleeping for 30 seconds.")
+            time.sleep(30)
             self.messages_in_last_minute = 0
             self.last_minute_check = time.time()
         if self.messages_in_last_second >= 18:
-            log.warning("Approaching 20 requests per second limit. Sleeping for 1 second.")
+            log.warning("Approaching 20 requests per second limit. Sleeping for 2 seconds.")
             time.sleep(2)
             self.messages_in_last_second = 0
             self.last_second_check = time.time()
         self.messages_in_last_minute += 1
         self.messages_in_last_second += 1
 
-    def get_matches_last_year(self, summoner_name: str, tag : str, platform: str, count: int = 100, stop_condition  = None) -> list[str]:
+    def get_matches_last_year(self, puuid: str, platform: str, count: int = 100, stop_condition  = None) -> list[str]:
         """Get all match IDs from the past year for a summoner."""
         region = REGION_MAP[platform]
-        puuid = self.get_summoner_puuid(summoner_name, tag, region)
+        #puuid = self.get_summoner_puuid(summoner_name, tag, region)
         log.debug(f"Summoner PUUID: {puuid}")
 
         # Calculate time range
@@ -120,18 +123,23 @@ class Analytics:
         """Interpret raw match data into structured DTOs."""
         match_dto = dtos.MatchDTO.from_json(match_data)
         return match_dto
+    
+    def interpret_champ_mastery(self, champ_mastery_data: Dict[str, Any]) -> list[dtos.ChampionMasteryDTO]:
+        """Interpret raw champion mastery data into structured DTOs."""
+        champ_mastery_dtos = dtos.ChampionMasteryDTO.from_dict(champ_mastery_data)
+        return champ_mastery_dtos
 
-    def get_champion_mastery(self, summoner_name: str, tag : str, platform: str) -> list[dict]:
+    def get_champion_mastery(self, puuid: str, platform: str) -> list[dict]:
         """Get champion mastery data for a given summoner."""
-        region = REGION_MAP[platform]
-        puuid = self.get_summoner_puuid(summoner_name, tag, region)
-        log.debug(f"Fetching champion mastery for PUUID: {puuid}")
-        url = f"https://{region}.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-summoner/{puuid}"
+        #region = REGION_MAP[platform] #I really don't understand why I cannot use region here..
+        #puuid = self.get_summoner_puuid(summoner_name, tag, region)
+        log.debug(f"Fetching champion mastery for PUUID: {puuid}") 
+        url = f"https://{platform}.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-puuid/{puuid}/top"
         headers = {"X-Riot-Token": self.api_key}
         self.check_api_usage()
         response = requests.get(url, headers=headers)
         response.raise_for_status()
-        return response.json()
+        return response.text
 
     def get_league_entries(self, summoner_name: str, tag : str, platform: str) -> list[dict]:
         """Get league entries for a given summoner."""

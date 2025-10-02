@@ -2,7 +2,7 @@ import json
 from typing import Any, Dict, get_args, get_origin
 from dataclasses import dataclass, fields, asdict, is_dataclass
 
-BLACLIST = ['perks', 'missions', 'challenges']
+BLACLIST = ['perks', 'missions', 'challenges', 'nextSeasonMileStone']
 
 @dataclass
 class BaseDTO:
@@ -211,3 +211,17 @@ class MatchDTO(BaseDTO):
     metadata : MetadataDTO
     info : InfoDTO
 
+@dataclass
+class ChampionMasteryDTO(BaseDTO):
+    puuid: str
+    championPointsUntilNextLevel: int
+    chestGranted: bool
+    championId: int
+    lastPlayTime: int
+    championLevel: int
+    championPoints: int
+    championPointsSinceLastLevel: int
+    markRequiredToNextLevel: int
+    championSeasonMileStone : int
+    tokensEarned : int
+    milestoneGrades : list[str]
