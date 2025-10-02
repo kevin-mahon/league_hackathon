@@ -121,6 +121,6 @@ class Analyzer:
             "average_gold": total_gold / total_games if total_games > 0 else 0,
             "average_damage": total_damage / total_games if total_games > 0 else 0,
             "average_vision": total_vision / total_games if total_games > 0 else 0,
-            "champion_stats": champion_stats,
-            "top_champions": champion_mastery_dtos[:3]  # top 3 champions by mastery
+            "champion_stats": top_champ_stats,
+            "top_champions": top_champs  # top 3 champions by mastery
         }
