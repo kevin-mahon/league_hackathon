@@ -41,6 +41,7 @@ class Analytics:
         log.debug(f"Fetching PUUID for summoner: {summoner_name}#{tag} in region: {region}")
         url = f"https://{region}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{summoner_name}/{tag}"#summoner/v4/summoners/by-name/{summoner_name}"
         headers = {"X-Riot-Token": self.api_key}
+        self.check_api_usage()
         response = requests.get(url, headers=headers)
         response.raise_for_status()
         return response.json()["puuid"]
@@ -57,12 +58,12 @@ class Analytics:
             self.last_second_check = time.time()
         if self.messages_in_last_minute >= 90:
             log.warning("Approaching 100 requests per 2 minutes limit. Sleeping for 10 seconds.")
-            time.sleep(10)
+            time.sleep(60)
             self.messages_in_last_minute = 0
             self.last_minute_check = time.time()
         if self.messages_in_last_second >= 18:
             log.warning("Approaching 20 requests per second limit. Sleeping for 1 second.")
-            time.sleep(1)
+            time.sleep(2)
             self.messages_in_last_second = 0
             self.last_second_check = time.time()
         self.messages_in_last_minute += 1
