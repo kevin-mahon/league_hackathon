@@ -1,6 +1,13 @@
+"use client";
+import Hexcore from "./components/hexcore";
 
-export default function Home() {
+const Home: React.FC = () => {
+  
   return (
-    <p>Test</p>
-  );
-}
+    <main>
+      <Hexcore color="white" width={200} height={200} />
+    </main>
+  )
+};
+
+export default Home;
