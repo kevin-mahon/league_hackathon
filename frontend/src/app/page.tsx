@@ -5,14 +5,20 @@ import Hexcore from "./components/hexcore";
 import AnimatedHexcore from "./components/animatedHexcore";
 import HexInput from "./components/hexInput";
 
+const DEFAULT_COLOR = "#131474";
+const ERROR_COLOR = "#74136A";
 
 const Home: React.FC = () => {
-  const DEFAULT_COLOR = "#131474";
-  const PRESSED_COLOR = "#74136A";
 
   const [gradientColor, setGradientColor] = useState(DEFAULT_COLOR);
   const [inputError, setInputError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(" ");
   
+  const [inputValue, setInputValue] = useState("");
+
+  const updateValue = (value: string): void => {
+    setInputValue(value);
+  };
 
   return (
     <main
@@ -20,6 +26,7 @@ const Home: React.FC = () => {
         width: "100vw",
         height: "100vh",
         display: "flex",
+        gap: "15px",
         justifyContent: "center",
         flexDirection: "column",
         alignItems: "center",
@@ -27,7 +34,7 @@ const Home: React.FC = () => {
         transition: "any 0.2s ease",
       }}
     >
-      <AnimatedHexcore color="#89EFFF"/>
+      <AnimatedHexcore color={inputError ? "#FF393C" : "#89EFFF"}/>
       <HexInput
         width={"250px"}
         borderColor="white"
@@ -35,7 +42,9 @@ const Home: React.FC = () => {
         label="Enter Your League ID"
         fontSize={"25px"}
         placeholder = "e.g. 17822832"
+        updateValue={updateValue}
       />
+      <h2 style={{color: "red"}}>{errorMessage}</h2>
     </main>
   );
 };
