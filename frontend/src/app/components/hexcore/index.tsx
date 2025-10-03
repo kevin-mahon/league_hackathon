@@ -1,4 +1,5 @@
 import React from "react";
+import { useState } from "react";
 
 type HexcoreProps = {
   color?: string;
@@ -7,13 +8,25 @@ type HexcoreProps = {
 };
 
 const Hexcore: React.FC<HexcoreProps> = ({ color = "white", width = 409, height = 373 }) => {
+    const [pressed, setPressed] = useState(false);
+
   return (
     <svg
       width={width}
       height={height}
       viewBox="0 0 409 373"
       xmlns="http://www.w3.org/2000/svg"
-      style={{ color }}
+      onMouseDown={() => setPressed(true)}
+      onMouseUp={() => setPressed(false)}
+      onMouseLeave={() => setPressed(false)} 
+      onTouchStart={() => setPressed(true)}
+      onTouchEnd={() => setPressed(false)}
+      style={{
+        color: pressed ? "#FF393C" : color,
+        cursor: "pointer",
+        transition: "color 0.1s, filter 0.1s",
+        filter: pressed ? "drop-shadow(0 0 20px #FF393C)" : "none",
+      }}
     >
       <path d="M223.614 116.682C225.767 112.21 231.905 111.634 234.853 115.628L278.515 174.784C281.56 178.91 278.934 184.779 273.829 185.258L198.271 192.347C193.166 192.826 189.494 187.548 191.718 182.928L223.614 116.682Z" fill="currentColor"/>
         <path d="M144.07 106.59C142.678 102.369 145.779 98.0081 150.223 97.9373L211.971 96.9547C217.372 96.8687 220.576 102.96 217.446 107.362L175.045 166.992C171.915 171.393 165.11 170.367 163.417 165.237L144.07 106.59Z" fill="currentColor"/>
