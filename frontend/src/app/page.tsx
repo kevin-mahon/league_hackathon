@@ -22,6 +22,8 @@ const Home: React.FC = () => {
 
   const updateValue = (value: string): void => {
     setInputValue(value);
+    setInputError(false);
+    setErrorMessage(" ");
   };
 
   

@@ -16,25 +16,14 @@ const AnimatedHexcore: React.FC<AnimatedHexcoreProps> = ({
   return (
     <motion.div
       style={{ display: "inline-block", cursor: "pointer" }}
-      whileHover={{ scale: 1.1 }}
-      whileTap={{ scale: 0.95 }}
       animate={{
-        rotate: [0, 1440, 1440], 
-        y: [0, 10, 0], 
+        y: [0, -4, 0],        
+        scale: [1, 1.05, 1],  
       }}
       transition={{
-        rotate: {
-          duration: 1,
-          times: [0, 0.25, 1],
-          repeat: Infinity,
-          repeatDelay: 5,
-          ease: "easeInOut",
-        },
-        y: {
-          duration: 1,
-          repeat: Infinity,
-          ease: "easeInOut",
-        },
+        duration: 3,
+        repeat: Infinity,
+        ease: "easeInOut",
       }}
     >
       <Hexcore color={color} width={width} height={height} />

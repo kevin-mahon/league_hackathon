@@ -8,7 +8,7 @@ import AnimatedHexcore from '../components/animatedHexcore';
 export default function Intro() {
     
     return (        
-    <div style={{ width: '100%', height: '100vh', position: 'relative' }}>
+    <div style={{ width: '100%', height: '100vh', position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
         <LaserFlow />
     <div style={{
       position: 'absolute', 
