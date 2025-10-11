@@ -1,4 +1,6 @@
 from api import createapp
+from flask_sqlalchemy import SQLAlchemy
+import os
 import logging 
 
 logging.basicConfig(
@@ -7,6 +9,11 @@ logging.basicConfig(
 )
 
 app = createapp()
+
+db_path = os.path.join(os.path.dirname(__file__), 'cache.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///{}'.format(db_path)
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
 
 def main():
     print("Hello from league-hackathon!")

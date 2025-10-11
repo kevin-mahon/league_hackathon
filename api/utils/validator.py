@@ -6,6 +6,7 @@ class ValidationError(Exception):
         self.message = message
 
 def validate_field(
+        #update field type to allow array of types [str, int, float]
     value,
     field_type=str,
     *,
