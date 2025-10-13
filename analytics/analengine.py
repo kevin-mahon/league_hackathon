@@ -32,6 +32,7 @@ REGION_MAP = {
 class Analytics:
 
     def __init__(self, riot_api_key: str):
+        #TODO: Rotate api keys, accept list here ^
         self.api_key = riot_api_key
         self.messages_in_last_minute = 0
         self.messages_in_last_second = 0
@@ -80,7 +81,7 @@ class Analytics:
 
         # Calculate time range
         end_time = int(time.time())  # now 
-        start_time = int((datetime.now() - timedelta(days=365)).timestamp())
+        start_time = int((datetime.now() - datetime(2025, 1, 1, 0, 0, 0)).timestamp())
 
         all_matches = []
         start = 0
