@@ -80,8 +80,8 @@ class Analytics:
         log.debug(f"Summoner PUUID: {puuid}")
 
         # Calculate time range
-        start_time = int(datetime.now().timestamp())
-        end_time = int(datetime(2025, 1, 1, 0, 0, 0).timestamp())
+        end_time = int(datetime.now().timestamp())
+        start_time = int(datetime(2025, 1, 1, 0, 0, 0).timestamp())
 
         all_matches = []
         start = 0
