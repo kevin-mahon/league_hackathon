@@ -33,11 +33,11 @@ class Analyzer:
         ("visionScore", 3), #vision
 
         ("championId", 4), #champ select
-        ("individualPosition", 4),
+        ("teamPosition", 4),
 
         ("baronKills", 5), #objectives
         ("dragonKills", 5),
-        ("riftHeraldKills", 5),
+        # ("riftHeraldKills", 5), #this one requires ChallengesDTOs?
         ("turretKills", 5),
         ("inhibitorKills", 5),
         ("nexusKills", 5),
@@ -107,7 +107,7 @@ class Analyzer:
                     champ_name = champions.CHAMPION_ID_TO_NAME.get(champ_id, "Unknown")
                     #update totals for overall stats
                     #loop over TRACKED_STATS and update totals by participant attributes
-                    for ts in Analyzer.TRACKED_STATS:
+                    for ts,_ in Analyzer.TRACKED_STATS:
                         #there has to be a better way to do this .. .
                         if ts == "cs":
                             stats[ts].append(participant.totalMinionsKilled + participant.neutralMinionsKilled)
@@ -138,6 +138,9 @@ class Analyzer:
             )
 
         #return Results as a json serializable dict w/ individual : [total_stats]
+        # print(f" role: {stats['role'].over_time}")
+        # print(f" teamId: {stats['teamId'].over_time}")
+        # print(f" teamPosition: {stats['teamPosition'].over_time}")
         return [res.to_dict() for res in individual_results]
         
 
