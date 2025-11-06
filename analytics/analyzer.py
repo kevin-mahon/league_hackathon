@@ -10,20 +10,62 @@ log = klogs.get_logger("ANALYZER")
 class Analyzer:
 
     TRACKED_STATS = [
-        "kills",
+        "kills", #combat
         "deaths",
         "assists",
-        "cs",
+        "totalDamageDealt",
+        "magicDamageDealt",
+        "physicalDamageDealt",
+        "totalHeal",
+        "totalDamageTaken",
+        "firstBloodKill",
+        "pentaKills",
+        "quadraKills",
+        "tripleKills",
+        "doubleKills",
+        "timeCCingOthers",
+
+        "cs", #economy
         "goldEarned",
-        "totalDamageDealtToChampions",
-        "visionScore"
+        "goldSpent",
+
+        "visionScore", #vision
+
+        "championId", #champ_select
+        "individualPosition",
+
+        "baronKills", #objectives
+        "dragonKills",
+        "riftHeraldKills",
+        "turretKills",
+        "inhibitorKills",
+        "nexusKills",
+        "objectivesStolen",
+
+        "timePlayed", #general
+        "teamId",
+        "role",
+        "win",
+        # "summoner1Id", #summoner spells
+        # "summoner2Id", 
+
     ]
     STAT_GROUPS = [
         "damage",
         "economy",
         "vision",
         "champ_select",
+        "objectives",
+        "general"
     ]
+
+    # first: 
+    # 1. most played champ
+    # 2. time spent playing
+    # 3. total kills / total deaths / total assists
+    # 4. champion w/ most kills / multi kills
+    # 5. total gold earned (also in lbs/ kgs)
+    # 6. Monsters slain (crabs/heralds/drake/baron/atakhan)
 
     def __init__(self, riot_api_key: str):
         self.engine = analengine.Analytics(riot_api_key)
@@ -159,3 +201,8 @@ class Results:
             "description": self.description,
             "type": self.type
         }
+
+def run_analysis(summoner: str, tag: str, region: str, api_key: str = "RGAPI-342a3a00-221d-4716-a6f8-86f2e11a48aa"):
+    analyzer = Analyzer(api_key)
+    results = analyzer.analyze(summoner, tag, region)
+    return results

@@ -1,5 +1,6 @@
 import argparse
-from .analengine import run_analysis
+# from .analengine import run_analysis
+from analyzer import run_analysis
 
 
 if __name__ == "__main__":
@@ -9,4 +10,5 @@ if __name__ == "__main__":
     parser.add_argument("--tag", type=str, required=True, help="Tag of summoner.")
     args = parser.parse_args()
 
-    run_analysis(args.summoner, args.tag, "na1", args.api_key)
+    analysis = run_analysis(args.summoner, args.tag, "na1", args.api_key)
+    print(analysis)
