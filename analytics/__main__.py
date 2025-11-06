@@ -1,6 +1,6 @@
 import argparse
 # from .analengine import run_analysis
-from analyzer import run_analysis
+from .analyzer import run_analysis
 
 
 if __name__ == "__main__":
