@@ -4,48 +4,49 @@ from enum import Enum, auto
 import klogs
 from . import analengine
 from . import champions
+from .stats import Statz
 
 log = klogs.get_logger("ANALYZER")
 
 class Analyzer:
 
     TRACKED_STATS = [
-        "kills", #combat
-        "deaths",
-        "assists",
-        "totalDamageDealt",
-        "magicDamageDealt",
-        "physicalDamageDealt",
-        "totalHeal",
-        "totalDamageTaken",
-        "firstBloodKill",
-        "pentaKills",
-        "quadraKills",
-        "tripleKills",
-        "doubleKills",
-        "timeCCingOthers",
+        ("kills", 1), #combat
+        ("deaths", 1),
+        ("assists", 1),
+        ("totalDamageDealt", 1),
+        ("magicDamageDealt", 1),
+        ("physicalDamageDealt", 1),
+        ("totalHeal", 1),
+        ("totalDamageTaken", 1),
+        ("firstBloodKill", 1),
+        ("pentaKills", 1),
+        ("quadraKills", 1),
+        ("tripleKills", 1),
+        ("doubleKills", 1),
+        ("timeCCingOthers", 1),
 
-        "cs", #economy
-        "goldEarned",
-        "goldSpent",
+        ("cs", 2), #economy
+        ("goldEarned", 2),
+        ("goldSpent", 2),
 
-        "visionScore", #vision
+        ("visionScore", 3), #vision
 
-        "championId", #champ_select
-        "individualPosition",
+        ("championId", 4), #champ select
+        ("individualPosition", 4),
 
-        "baronKills", #objectives
-        "dragonKills",
-        "riftHeraldKills",
-        "turretKills",
-        "inhibitorKills",
-        "nexusKills",
-        "objectivesStolen",
+        ("baronKills", 5), #objectives
+        ("dragonKills", 5),
+        ("riftHeraldKills", 5),
+        ("turretKills", 5),
+        ("inhibitorKills", 5),
+        ("nexusKills", 5),
+        ("objectivesStolen", 5),
 
-        "timePlayed", #general
-        "teamId",
-        "role",
-        "win",
+        ("timePlayed", 6), #general
+        ("teamId", 6),
+        ("role", 6),
+        ("win", 6),
         # "summoner1Id", #summoner spells
         # "summoner2Id", 
 
@@ -93,94 +94,60 @@ class Analyzer:
             interpreted_match = self.engine.interpret_match(detailed_match)
             interpreted_matches.append(interpreted_match)
 
-        #get champion mastery for top 3 champions
-        champion_mastery = self.engine.get_champion_mastery(puuid, region)
-        champion_mastery_dtos = []
-        for cm in json.loads(champion_mastery):
-            champion_mastery_dtos.append(self.engine.interpret_champ_mastery(cm))
-
         #analyze the interpreted matches
-        total_games = len(interpreted_matches)
-        champion_stats = {}
-
-        totals = {}
-        for key in Analyzer.TRACKED_STATS:
-            totals[key] = 0
+        stats = {}
+        for key, category in Analyzer.TRACKED_STATS:
+            stats[key] = Statz(key, 0, Category(category)) 
 
         for match in interpreted_matches:
             for idx, summonerId in enumerate(match.metadata.participants):
-                if summonerId == puuid:
+                if summonerId == puuid: #we got em boys
                     participant = match.info.participants[idx]
                     champ_id = participant.championId
                     champ_name = champions.CHAMPION_ID_TO_NAME.get(champ_id, "Unknown")
-
-                    if champ_name not in champion_stats:
-                        #this is ugly and I hate it
-                        champion_stats[champ_name] = {
-                            "games": 0,
-                            "wins": 0,
-                            "kills": 0,
-                            "deaths": 0,
-                            "assists": 0,
-                            "cs": 0,
-                            "gold": 0,
-                            "damage": 0,
-                            "vision": 0
-                        }
-
-                    champion_stats[champ_name]["games"] += 1
-                    if participant.win:
-                        champion_stats[champ_name]["wins"] += 1
-
-                    champion_stats[champ_name]["kills"] += participant.kills
-                    champion_stats[champ_name]["deaths"] += participant.deaths
-                    champion_stats[champ_name]["assists"] += participant.assists
-                    champion_stats[champ_name]["cs"] += participant.totalMinionsKilled + participant.neutralMinionsKilled
-                    champion_stats[champ_name]["gold"] += participant.goldEarned
-                    champion_stats[champ_name]["damage"] += participant.totalDamageDealtToChampions
-                    champion_stats[champ_name]["vision"] += participant.visionScore
-
                     #update totals for overall stats
-                    #loop over TRACED_STATS and update totals by participant attributes
-                    for stat in Analyzer.TRACKED_STATS:
-                        totals[stat] += getattr(participant, stat) if stat != "cs" else (participant.totalMinionsKilled + participant.neutralMinionsKilled)
-
-        #top champ masteries:
-        top_champs = []
-        for cm in champion_mastery_dtos:
-            top_champs.append(champions.CHAMPION_ID_TO_NAME.get(cm.championId, "Unknown"))
-
-        log.debug(f"Top champions by mastery: {top_champs}")
-        top_champ_stats = {champ: champion_stats.get(champ, {}) for champ in top_champs}
+                    #loop over TRACKED_STATS and update totals by participant attributes
+                    for ts in Analyzer.TRACKED_STATS:
+                        #there has to be a better way to do this .. .
+                        if ts == "cs":
+                            stats[ts].append(participant.totalMinionsKilled + participant.neutralMinionsKilled)
+                        elif ts == "championId":
+                            stats[ts].append(champ_name)
+                        else:
+                            stats[ts].append(getattr(participant, ts))
+                else:
+                    continue
 
         #get most played champ
-        most_played_champ = max(champion_stats.items(), key=lambda x: x[1]["games"], default=(None, None))
-        if most_played_champ[0]:
-            log.debug(f"Most played champion: {most_played_champ[0]} games")
+        most_played_champ = stats["championId"].most_common()
+        most_played_champ_ngames = stats["championId"].over_time.count(most_played_champ)
+        if most_played_champ:
+            log.debug(f"Most played champion: {most_played_champ} with {most_played_champ_ngames} games.")
 
         #for all stats in totals, top_champs, most_played_champ if not in top_champs, make a result object
         individual_results = []
-        for stat, value in totals.items():
-            log.debug(f"Total {stat}: {value}")
+        for key, stat in stats.items():
+            log.debug(f"Total {stat}: {stat.total}")
             individual_results.append(
                     Results(
-                        name=stat,
-                        value=value,
-                        description=self.generate_description(stat, value),
-                        type=Category.SOLO
+                        name=key,
+                        value=stat.total,
+                        description=self.generate_description(stat, key),
+                        type=stat.category
                     )
             )
 
         #return Results as a json serializable dict w/ individual : [total_stats]
-        return {
-            "individual": [res.to_dict() for res in individual_results],
-            "groups": []
-        }
+        return [res.to_dict() for res in individual_results]
+        
 
 class Category(Enum):
-    SOLO = 1
-    GROUP = 2
-    WRAPPED = 3
+    DAMAGE = 1
+    ECONOMY = 2
+    VISION = 3
+    CHAMP_SELECT = 4
+    OBJECTIVES = 5
+    GENERAL = 6
 
 class Results:
     name: str
@@ -198,8 +165,7 @@ class Results:
         return {
             "name": self.name,
             "value": self.value,
-            "description": self.description,
-            "type": self.type
+            "category": self.type
         }
 
 def run_analysis(summoner: str, tag: str, region: str, api_key: str = "RGAPI-342a3a00-221d-4716-a6f8-86f2e11a48aa"):
