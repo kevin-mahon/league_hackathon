@@ -133,7 +133,7 @@ class ParticipantDTO(BaseDTO):
     totalDamageDealt : int 
     totalDamageDealtToChampions :int 
     totalDamageShieldedOnTeammates :int 
-    totalDamageTake :int 
+    totalDamageTaken :int 
     totalEnemyJungleMinionsKilled :int 
     totalHeal :int 
     totalHealsOnTeammates :int
