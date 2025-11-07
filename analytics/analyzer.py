@@ -159,6 +159,10 @@ class Analyzer:
                             stats[ts].append(participant.totalMinionsKilled + participant.neutralMinionsKilled)
                         elif ts == "championId":
                             stats[ts].append(champ_name)
+                        elif ts == "pentaKills" or ts == "quadraKills" or ts == "tripleKills" or ts == "doubleKills":
+                            #these are counts of multi kills, append them only if they are > 0
+                            if getattr(participant, ts) > 0:
+                                stats[ts].append(getattr(participant, ts))
                         else:
                             stats[ts].append(getattr(participant, ts))
                 else:
@@ -199,7 +203,6 @@ class Analyzer:
         #return Results as a json serializable dict w/ individual : [total_stats]
         return json.dumps([res.to_dict() for res in individual_results])
         
-
 class Category(str, Enum):
     DAMAGE = "DAMAGE"
     ECONOMY = "ECONOMY" 
