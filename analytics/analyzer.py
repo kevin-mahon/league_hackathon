@@ -52,12 +52,12 @@ class Analyzer:
 
     ]
     STAT_GROUPS = [
-        "damage",
-        "economy",
-        "vision",
-        "champ_select",
-        "objectives",
-        "general"
+        "DAMAGE",
+        "ECONOMY",
+        "VISION",
+        "CHAMP_SELECT",
+        "OBJECTIVES",
+        "GENERAL"
     ]
 
     # first: 
@@ -75,6 +75,37 @@ class Analyzer:
         #PLACEHOLDER
         return f"You had a total of {value} {stat} in the last year!"
 
+    def generate_prompt(self, stats) -> str:
+        prompt = f"""
+            You are a League of Legends analyst. Given a player's statistics over the past
+            year, provide insights into their gameplay. Follow this rubric and print only
+            the final analysis without any additional commentary. Use the statistics
+            provided to identify strengths and areas for improvement. For each element in
+            the rubric below return results numbered.
+
+            This player normally plays:
+            {stats["teamPosition"].most_common()} in {stats["role"].most_common()} role.
+
+            1. {stats["most_played_champ"].total} - is their most played champ. Give insights on
+                how to improve with this champ. What to know about matchups, playstyle, etc.
+            2. {stats["kills"].average()}, {stats["deaths"].average()}, {stats["assists"].average()} - average kills,
+                deaths, and assists. Provide insights on KDA improvement strategies.
+            3. {stats["goldEarned"].average()} - average gold earned. Provide insights on farming
+                efficiency and itemization strategies.
+            4. Using {stats["cs"].average()} - average creep score. Provide insights on wave
+                management and farming techniques and improving gold earned during laning phase.
+            5. {stats["dragonKills"].average()} - {stats["baronKills"].average()} - {stats["turretKills"].average()} -
+                average objectives taken (dragons, barons, turrets).Provide insights on objective
+                control and team play and macro.
+            6. {stats["visionScore"].average()} - average vision score. Provide insights on warding
+                strategies and map awareness.
+            7. {stats["totalDamageDealt"].average()} - average damage dealt. Provide insights on damage
+                output optimization and role-specific strategies.
+            8. {stats["win"].total} - total wins in the last year. Provide
+                insights on overall win rate improvement strategies.
+        """
+        return prompt
+
     def analyze(self, summoner: str, tag : str, region : str):
         puuid = self.engine.get_summoner_puuid(summoner, tag, region)
         if not puuid:
@@ -85,9 +116,15 @@ class Analyzer:
         #get detailed match info for each match
         detailed_matches = []
         for match in matches:
-            detailed_match = self.engine.get_match_details(match, region)
-            detailed_matches.append(detailed_match)
+            try:
+                detailed_match = self.engine.get_match_details(match, region)
+                detailed_matches.append(detailed_match)
+            except Exception as e:
+                log.error(f"Error fetching match details for match {match}: {e}")
 
+        if len(detailed_matches) == 0:
+            log.error(f"No detailed matches found for summoner {summoner} in region {region}")
+            return None
         #interpret the matches
         interpreted_matches = []
         for detailed_match in detailed_matches:
@@ -97,9 +134,18 @@ class Analyzer:
         #analyze the interpreted matches
         stats = {}
         for key, category in Analyzer.TRACKED_STATS:
-            stats[key] = Statz(key, 0, Category(category)) 
+            stats[key] = Statz(key, 0, Category[Analyzer.STAT_GROUPS[category - 1]]) 
 
         for match in interpreted_matches:
+            #filter ARAMS
+            print(match.info.gameMode)
+            if match.info.gameMode == "ARAM":
+                #ARAM is too different, you can also argue it should be its own analysis
+                #or that Classic vs. Ranked games should be considered
+                #or even that different patches should be considered separately
+                #to those people, fight me
+                #for now, I will skip ARAMS
+                continue
             for idx, summonerId in enumerate(match.metadata.participants):
                 if summonerId == puuid: #we got em boys
                     participant = match.info.participants[idx]
@@ -124,33 +170,43 @@ class Analyzer:
         if most_played_champ:
             log.debug(f"Most played champion: {most_played_champ} with {most_played_champ_ngames} games.")
 
+        stats["most_played_champ"] = Statz("most_played_champ", most_played_champ, Category.CHAMP_SELECT)
+
         #for all stats in totals, top_champs, most_played_champ if not in top_champs, make a result object
         individual_results = []
         for key, stat in stats.items():
-            log.debug(f"Total {stat}: {stat.total}")
+            log.debug(f"Total {key}: {stat.total}")
             individual_results.append(
                     Results(
                         name=key,
-                        value=stat.total,
+                        value= stat.total if stat.total != 0 else stat.most_common(),
                         description=self.generate_description(stat, key),
                         type=stat.category
                     )
             )
 
+        prompt = self.generate_prompt(stats)
+        log.debug(f"Generated prompt for LLM:\n{prompt}")
+        individual_results.append(
+                Results(
+                    name="llm_prompt",
+                    value=prompt,
+                    description="LLM generated analysis based on player stats.",
+                    type=Category.GENERAL
+                )
+        )
+
         #return Results as a json serializable dict w/ individual : [total_stats]
-        # print(f" role: {stats['role'].over_time}")
-        # print(f" teamId: {stats['teamId'].over_time}")
-        # print(f" teamPosition: {stats['teamPosition'].over_time}")
-        return [res.to_dict() for res in individual_results]
+        return json.dumps([res.to_dict() for res in individual_results])
         
 
-class Category(Enum):
-    DAMAGE = 1
-    ECONOMY = 2
-    VISION = 3
-    CHAMP_SELECT = 4
-    OBJECTIVES = 5
-    GENERAL = 6
+class Category(str, Enum):
+    DAMAGE = "DAMAGE"
+    ECONOMY = "ECONOMY" 
+    VISION = "VISION" 
+    CHAMP_SELECT = "CHAMP_SELECT" 
+    OBJECTIVES = "OBJECTIVES" 
+    GENERAL = "GENERAL" 
 
 class Results:
     name: str
