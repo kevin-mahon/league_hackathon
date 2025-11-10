@@ -1,4 +1,5 @@
 from flask import Flask
+
 from .routes.home import home
 from .routes.league_id import league_id_blueprint
 
