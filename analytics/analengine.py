@@ -61,13 +61,15 @@ class Analytics:
             self.messages_in_last_second = 0
             self.last_second_check = time.time()
         if self.messages_in_last_minute >= 90:
-            log.warning("Approaching 100 requests per 2 minutes limit. Sleeping for 30 seconds.")
-            time.sleep(30)
+            #if we approach the limit we sleep for the remaining time until the 2 minutes are over
+            time_delay = round(max(0, (120 + self.last_minute_check) - time.time())) + 5
+            log.warning(f"Approaching 100 requests per 2 minutes limit. Sleeping for {time_delay} seconds.")
+            time.sleep(time_delay)
             self.messages_in_last_minute = 0
             self.last_minute_check = time.time()
         if self.messages_in_last_second >= 18:
-            log.warning("Approaching 20 requests per second limit. Sleeping for 2 seconds.")
-            time.sleep(2)
+            log.warning("Approaching 20 requests per second limit. Sleeping for 1 seconds.")
+            time.sleep(1)
             self.messages_in_last_second = 0
             self.last_second_check = time.time()
         self.messages_in_last_minute += 1
