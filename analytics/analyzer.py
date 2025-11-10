@@ -2,9 +2,11 @@ import json
 from typing import Any
 from enum import Enum, auto
 import klogs
+import re
 from . import analengine
 from . import champions
 from .stats import Statz
+from .llm import BedrockLLM
 
 log = klogs.get_logger("ANALYZER")
 
@@ -70,6 +72,7 @@ class Analyzer:
 
     def __init__(self, riot_api_key: str):
         self.engine = analengine.Analytics(riot_api_key)
+        self.llm = BedrockLLM()
 
     def generate_description(self, stat: str, value: Any) -> str:
         #PLACEHOLDER
@@ -114,31 +117,30 @@ class Analyzer:
         matches = self.engine.get_matches_last_year(puuid, region)
 
         #get detailed match info for each match
-        detailed_matches = []
+        self.detailed_matches = []
         for match in matches:
             try:
                 detailed_match = self.engine.get_match_details(match, region)
-                detailed_matches.append(detailed_match)
+                self.detailed_matches.append(detailed_match)
             except Exception as e:
                 log.error(f"Error fetching match details for match {match}: {e}")
 
-        if len(detailed_matches) == 0:
+        if len(self.detailed_matches) == 0:
             log.error(f"No detailed matches found for summoner {summoner} in region {region}")
             return None
         #interpret the matches
-        interpreted_matches = []
-        for detailed_match in detailed_matches:
+        self.interpreted_matches = []
+        for detailed_match in self.detailed_matches:
             interpreted_match = self.engine.interpret_match(detailed_match)
-            interpreted_matches.append(interpreted_match)
+            self.interpreted_matches.append(interpreted_match)
 
         #analyze the interpreted matches
         stats = {}
         for key, category in Analyzer.TRACKED_STATS:
             stats[key] = Statz(key, 0, Category[Analyzer.STAT_GROUPS[category - 1]]) 
 
-        for match in interpreted_matches:
+        for match in self.interpreted_matches:
             #filter ARAMS
-            print(match.info.gameMode)
             if match.info.gameMode == "ARAM":
                 #ARAM is too different, you can also argue it should be its own analysis
                 #or that Classic vs. Ranked games should be considered
@@ -159,10 +161,6 @@ class Analyzer:
                             stats[ts].append(participant.totalMinionsKilled + participant.neutralMinionsKilled)
                         elif ts == "championId":
                             stats[ts].append(champ_name)
-                        elif ts == "pentaKills" or ts == "quadraKills" or ts == "tripleKills" or ts == "doubleKills":
-                            #these are counts of multi kills, append them only if they are > 0
-                            if getattr(participant, ts) > 0:
-                                stats[ts].append(getattr(participant, ts))
                         else:
                             stats[ts].append(getattr(participant, ts))
                 else:
@@ -180,6 +178,8 @@ class Analyzer:
         individual_results = []
         for key, stat in stats.items():
             log.debug(f"Total {key}: {stat.total}")
+            if stat.total == 0: #skip stats with 0 total
+                continue
             individual_results.append(
                     Results(
                         name=key,
@@ -190,15 +190,19 @@ class Analyzer:
             )
 
         prompt = self.generate_prompt(stats)
-        log.debug(f"Generated prompt for LLM:\n{prompt}")
-        individual_results.append(
-                Results(
-                    name="llm_prompt",
-                    value=prompt,
-                    description="LLM generated analysis based on player stats.",
-                    type=Category.GENERAL
-                )
-        )
+        resp = self.llm.generate(prompt)
+        pattern = r'(?s)(\d\..*?)(?=\n?\d\.|$)'
+        responses = re.findall(pattern, resp)
+        for i, r in enumerate(responses):
+            log.debug(f"LLM Analysis Part {i+1}: {r.strip()}")
+            individual_results.append(
+                    Results(
+                        name=f"llm_analysis_part_{i+1}",
+                        value=r.strip(),
+                        description=f"LLM generated analysis part {i}.",
+                        type=Category.IMPROVE
+                    )
+            )
 
         #return Results as a json serializable dict w/ individual : [total_stats]
         return json.dumps([res.to_dict() for res in individual_results])
@@ -210,6 +214,7 @@ class Category(str, Enum):
     CHAMP_SELECT = "CHAMP_SELECT" 
     OBJECTIVES = "OBJECTIVES" 
     GENERAL = "GENERAL" 
+    IMPROVE = "IMPROVE"
 
 class Results:
     name: str
