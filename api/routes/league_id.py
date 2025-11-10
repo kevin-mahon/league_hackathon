@@ -18,6 +18,7 @@ def index():
             max_length=20
         )
 
+        
     except ValidationError as e:
         logger.error(f"Validation error: {e.message}")
         return jsonify({"error": str(e)}), 400
